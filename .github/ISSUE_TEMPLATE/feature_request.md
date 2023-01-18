@@ -1,19 +1,91 @@
----
-name: Feature request
-about: Suggest an idea for this project
-title: '[Feature]'
-labels: enhancement
-assignees: Angel-Studio
----
+name: 🐞 Bug report
+description: Report an issue
+labels: [Bug]
+body:
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide an example of the issue.
+      placeholder: |
+        Example:
+          1. First step
+          2. Second step
+          3. Issue here
+    validations:
+      required: true
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Explain what you should expect to happen.
+      placeholder: |
+        Example:
+          "This should happen..."
+    validations:
+      required: true
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Explain what actually happens.
+      placeholder: |
+        Example:
+          "This happened instead..."
+    validations:
+      required: true
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: You can find your version in **Settings → About**.
+      placeholder: |
+        Example: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      description: You can find this somewhere in your Android settings.
+      placeholder: |
+        Example: "Android 11"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: List your device and model.
+      placeholder: |
+        Example: "Google Pixel 5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      placeholder: |
+        Additional details and attachments.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Read this carefully, we will close and ignore your issue if you skimmed through this.
+      options:
+        - label: I have searched the existing issues and this is a new ticket, **NOT** a duplicate or related to another open or closed issue.
+          required: true
+        - label: I have written a short but informative title.
+          required: true
+        - label: I have updated the app to the latest version available **[Version](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases/latest)**.
+          required: true
+        - label: I will fill out all of the requested information in this form.
+          required: true
