@@ -85,7 +85,7 @@ body:
           required: true
         - label: I have written a short but informative title.
           required: true
-        - label: I have updated the app to the latest version available **[Version](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases/latest)**.
+        - label: I have updated the app to the **[latest available version](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases/latest)**.
           required: true
         - label: I will fill out all of the requested information in this form.
           required: true
