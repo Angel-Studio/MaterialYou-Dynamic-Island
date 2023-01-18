@@ -1,9 +1,10 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: [Feature]
+title: '[Feature]'
 labels: enhancement
 assignees: Angel-Studio
+projects: Material-You-Dynamic-Island
 
 ---
 
