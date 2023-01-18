@@ -7,27 +7,90 @@ assignees: Angel-Studio
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+body:
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide an example of the issue.
+      placeholder: |
+        Example:
+          1. First step
+          2. Second step
+          3. Issue here
+    validations:
+      required: true
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Explain what you should expect to happen.
+      placeholder: |
+        Example:
+          "This should happen..."
+    validations:
+      required: true
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Explain what actually happens.
+      placeholder: |
+        Example:
+          "This happened instead..."
+    validations:
+      required: true
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: You can find your version in **Settings → About**.
+      placeholder: |
+        Example: "0.1.0"
+    validations:
+      required: true
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      description: You can find this somewhere in your Android settings.
+      placeholder: |
+        Example: "Android 11"
+    validations:
+      required: true
 
-**Additional context**
-Add any other context about the problem here.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: List your device and model.
+      placeholder: |
+        Example: "Google Pixel 5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      placeholder: |
+        Additional details and attachments.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Read this carefully, we will close and ignore your issue if you skimmed through this.
+      options:
+        - label: I have searched the existing issues and this is a new ticket, **NOT** a duplicate or related to another open or closed issue.
+          required: true
+        - label: I have written a short but informative title.
+          required: true
+        - label: I have updated the app to the **[latest available version](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases/latest)**.
+          required: true
+        - label: I will fill out all of the requested information in this form.
+          required: true
