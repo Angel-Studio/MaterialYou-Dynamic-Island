@@ -5,7 +5,7 @@
 # <img src="./.github/readme-images/app-icon.png" width="48"> Material You - Dynamic Island
 Material You Dynamic Island is a free Dynamic Island for Android API 31 (Android 12) and above.
 
-## Features
+## 🌟 Features
 
 Features include:
 * Show a popup when a new notification income
@@ -17,10 +17,10 @@ Features include:
 * Light, dark and amoled themes
 * Custom themes
 
-## Download
+## ⬇️ Download
 Get the app from our [releases page](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases).
 
-## Issues, Feature Requests and Contributing
+## 💟 Issues, Feature Requests and Contributing
 
 Please make sure to read the full guidelines. Your issue may be closed without warning if you do not.
 
