@@ -33,7 +33,7 @@ Please make sure to read the full guidelines. Your issue may be closed without w
 
 <details><summary>Bugs</summary>
 
-* Include version (Settings → About → Version)
+* Include version (**Settings → About → Version**)
  * If not latest, try updating, it may have already been solved
 * Include steps to reproduce (if not obvious from description)
 * Include screenshot (if needed)
