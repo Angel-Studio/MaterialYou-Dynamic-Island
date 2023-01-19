@@ -1,6 +1,6 @@
 | Stable | Discord Server | Play Store |
 |--------|----------------|------------|
-| [![stable release](https://img.shields.io/github/release/Angel-Studio/Material-You-Dynamic-Island.svg?maxAge=3600&label=download)](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases) | [![Discord](https://img.shields.io/discord/1065299087030747216.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/8NfBrxKs4T) | [![Play Store](https://img.shields.io/github/release/Angel-Studio/Material-You-Dynamic-Island.svg?maxAge=3600&label=download)]
+| [![stable release](https://img.shields.io/github/release/Angel-Studio/Material-You-Dynamic-Island.svg?maxAge=3600&label=download)](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases) | [![Discord](https://img.shields.io/discord/1065299087030747216.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/8NfBrxKs4T) | ![Play Store](https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=google-play&logoColor=white)
 
 # <img src="./.github/readme-images/app-icon.png" width="48"> Material You - Dynamic Island
 Material You Dynamic Island is a free Dynamic Island for Android API 31 (Android 12) and above.
