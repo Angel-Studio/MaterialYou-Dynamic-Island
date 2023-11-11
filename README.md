@@ -1,5 +1,3 @@
-###### I will come back to this project when I have passed my baccalaureate ;)
-
 | Stable | Alpha | Discord Server | Play Store (soon) | Ko-Fi |
 |--------|-------|----------------|------------|-------|
 | [![Stable Release](https://img.shields.io/github/release/Angel-Studio/Material-You-Dynamic-Island.svg?style=for-the-badge&maxAge=3600&label=DOWNLOAD)](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases) | [![Pre-Release)](https://img.shields.io/github/v/release/Angel-Studio/Material-You-Dynamic-Island?include_prereleases&label=DOWNLOAD&style=for-the-badge)](https://github.com/Angel-Studio/Material-You-Dynamic-Island/releases) | [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8NfBrxKs4T) | [![Play Store](https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=google-play&logoColor=white)](https://play.google.com/store/apps/dev?id=8686550764558677121&gl=FR) | [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/angelstudiofr)
