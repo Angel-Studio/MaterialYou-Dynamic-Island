@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,33 +50,16 @@ class BatteryPlugin(
 	),
 ) : BasePlugin() {
 
-	private lateinit var context: IslandOverlayService
 	var batteryPercent by mutableStateOf(0)
 
-	private val mBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-		override fun onReceive(context: Context, intent: Intent) {
-			// Get battery status extra
-			val status = intent.extras!!.getInt(BatteryManager.EXTRA_STATUS)
-			val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING
-
-			// If charging, add plugin else remove it
-			if (isCharging) {
-				this@BatteryPlugin.context.addPlugin(this@BatteryPlugin)
-				val batteryLevel = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-				val maxBatteryLevel = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-				// Set battery percent
-				batteryPercent = (batteryLevel * 100 / maxBatteryLevel)
-			} else {
-				this@BatteryPlugin.context.removePlugin(this@BatteryPlugin)
-			}
-		}
-	}
-
 	override fun canExpand(): Boolean { return false } // TODO: Add expandable function
+	
+	private var batteryReceiver: BatteryReceiver? = null
 
-	override fun onCreate(context: IslandOverlayService?) {
-		this.context = context ?: return
-		context.registerReceiver(mBroadcastReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+	override fun onPluginCreate() {
+		val context = host as? Context ?: return
+		batteryReceiver = BatteryReceiver()
+		context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_EXPORTED)
 
 		// Check for plugin internal settings
 		pluginSettings.values.forEach {
@@ -83,8 +69,31 @@ class BatteryPlugin(
 		}
 	}
 
+	inner class BatteryReceiver : BroadcastReceiver() {
+		override fun onReceive(context: Context, intent: Intent) {
+			// Get battery status extra
+			val status = intent.extras!!.getInt(BatteryManager.EXTRA_STATUS)
+			val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING
+
+			// If charging, add plugin else remove it
+			if (isCharging) {
+				host?.requestDisplay(this@BatteryPlugin)
+				val batteryLevel = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+				val maxBatteryLevel = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+				// Set battery percent
+				batteryPercent = (batteryLevel * 100 / maxBatteryLevel)
+			} else {
+				host?.requestDismiss(this@BatteryPlugin)
+			}
+		}
+	}
+
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun Composable() {
+	override fun Composable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		BatteryView(batteryPercent)
 	}
 
@@ -120,8 +129,12 @@ class BatteryPlugin(
 		}
 	}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun LeftOpenedComposable() {
+	override fun LeftOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		WaveLoading(
 			progress = animateFloatAsState(targetValue = batteryPercent.toFloat() / 100).value,
 			foreDrawType = DrawType.DrawColor(pointBetweenColors(BatteryEmpty, BatteryFull, batteryPercent.toFloat() / 100)),
@@ -142,8 +155,12 @@ class BatteryPlugin(
 	override fun onLeftSwipe() {}
 	override fun onRightSwipe() {}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun RightOpenedComposable() {
+	override fun RightOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		if ((pluginSettings[BATTERY_SHOW_PERCENTAGE] as PluginSettingsItem.SwitchSettingsItem).value.value) {
 			Text(
 				text = "$batteryPercent%",
@@ -154,9 +171,9 @@ class BatteryPlugin(
 	}
 
 	override fun onDestroy() {
-		if (!::context.isInitialized) return
+		val context = host as? Context ?: return
 		try {
-			context.unregisterReceiver(mBroadcastReceiver)
+			batteryReceiver?.let { context.unregisterReceiver(it) }
 		} catch (_: Exception) {} // Ignore exception if receiver is not registered
 	}
 

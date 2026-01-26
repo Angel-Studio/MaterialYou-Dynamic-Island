@@ -38,8 +38,8 @@ fun EnabledAppsSettingsScreen() {
 			//Background work here
 			apps.addAll(
 				context.packageManager.getInstalledPackages(0)
-					.filter { it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0 }.toMutableList()
-					.sortedBy { it.applicationInfo.loadLabel(context.packageManager).toString().lowercase() }
+					.filter { it.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM == 0 }.toMutableList()
+					.sortedBy { it.applicationInfo!!.loadLabel(context.packageManager).toString().lowercase() }
 			)
 		}
 	}
@@ -107,7 +107,7 @@ fun EnabledAppCard(
 		verticalAlignment = Alignment.CenterVertically,
 	) {
 		Image(
-			painter = rememberDrawablePainter(app.applicationInfo.loadIcon(LocalContext.current.packageManager)),
+			painter = rememberDrawablePainter(app.applicationInfo!!.loadIcon(LocalContext.current.packageManager)),
 			contentDescription = null,
 			modifier = Modifier
 				.size(48.dp)
@@ -115,7 +115,7 @@ fun EnabledAppCard(
 		)
 		Spacer(modifier = Modifier.width(16.dp))
 		Text(
-			text = app.applicationInfo.loadLabel(LocalContext.current.packageManager).toString(),
+			text = app.applicationInfo!!.loadLabel(LocalContext.current.packageManager).toString(),
 			modifier = Modifier.weight(1f),
 			style = MaterialTheme.typography.titleSmall,
 		)

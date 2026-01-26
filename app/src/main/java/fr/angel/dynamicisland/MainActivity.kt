@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
 
 		setContent {
 			// Setup plugins
-			ExportedPlugins.setupPlugins(LocalContext.current)
+			ExportedPlugins.setupPermissions(LocalContext.current)
 
 			// Init
 			Theme.instance.Init()

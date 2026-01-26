@@ -68,7 +68,7 @@ class NotificationService : NotificationListenerService() {
 		registerReceiver(mBroadcastReceiver, IntentFilter().apply {
 			addAction(ACTION_OPEN_CLOSE)
 			addAction(ACTION_CLOSE)
-		})
+		}, RECEIVER_EXPORTED)
 	}
 
 	override fun onNotificationPosted(statusBarNotification: StatusBarNotification) {

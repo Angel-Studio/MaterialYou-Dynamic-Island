@@ -33,15 +33,7 @@ class ExportedPlugins {
 			BatteryPlugin(),
 		)
 
-		fun setupPlugins(context: Context) {
-			for (plugin in plugins) {
-				plugin.permissions.forEach { permissionId ->
-					val permission = permissions[permissionId] ?: return@forEach
-					permission.granted.value = permission.checkPermission(context)
-				}
-				plugin.enabled.value = plugin.isPluginEnabled(context)
-			}
-
+		fun setupPermissions(context: Context) {
 			permissions.forEach { (id, permission) ->
 				permission.granted.value = permission.checkPermission(context)
 			}

@@ -30,14 +30,14 @@ class MediaCallback(
 		if (state == null) return
 		// Update the playback state
 		mediaStruct.playbackState.value = state
-		context.context.addPlugin(context)
+		context.addMedia()
 
 		// If media is paused, remove the plugin after 60 seconds
 		if (state.state == PlaybackState.STATE_PLAYING) {
 			handler.removeCallbacksAndMessages(null)
 		} else {
 			handler.postDelayed ({
-				context.context.removePlugin(context)
+				context.removeMedia(mediaController)
 			}, 60000)
 		}
 	}
@@ -62,6 +62,6 @@ class MediaCallback(
 		mediaStruct.cover.value = mediaMetadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
 		mediaStruct.duration.value = mediaMetadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
 
-		if (addPlugin) { context.context.addPlugin(context) }
+		if (addPlugin) { context.addMedia() }
 	}
 }

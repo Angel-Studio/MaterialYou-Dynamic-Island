@@ -2,12 +2,13 @@ package fr.angel.dynamicisland.plugins
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import fr.angel.dynamicisland.model.SETTINGS_CHANGED
 import fr.angel.dynamicisland.model.SETTINGS_KEY
-import fr.angel.dynamicisland.model.service.IslandOverlayService
 
 abstract class BasePlugin {
 	abstract val id: String
@@ -17,25 +18,56 @@ abstract class BasePlugin {
 	abstract var enabled: MutableState<Boolean>
 	abstract var pluginSettings: MutableMap<String, PluginSettingsItem>
 
+	protected var host: PluginHost? = null
+
 	val active get() = enabled.value && allPermissionsGranted
 
 	abstract fun canExpand(): Boolean
 
-	abstract fun onCreate(context: IslandOverlayService?)
+	fun onCreate(host: PluginHost) {
+		this.host = host
+		onPluginCreate()
+	}
+
+	abstract fun onPluginCreate()
+
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	abstract fun Composable()
+	abstract fun Composable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	)
 	abstract fun onClick()
 	abstract fun onDestroy()
 	@Composable
 	abstract fun PermissionsRequired()
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	abstract fun LeftOpenedComposable()
+	abstract fun LeftOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	)
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	abstract fun RightOpenedComposable()
+	abstract fun RightOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	)
 
 	abstract fun onRightSwipe()
 	abstract fun onLeftSwipe()
+
+	val allPermissionsGranted: Boolean
+		get() = permissions.all { permission ->
+			// Check if permission is granted
+			ExportedPlugins.permissions[permission]?.granted?.value ?: false
+		}
+
+	fun isPluginEnabled(context: Context): Boolean {
+		val preferences = context.getSharedPreferences(SETTINGS_KEY, Context.MODE_PRIVATE)
+		return preferences.getBoolean(id, false)
+	}
 
 	fun switchEnabled(context: Context, enabled: Boolean = !this.enabled.value): Boolean {
 
@@ -55,17 +87,5 @@ abstract class BasePlugin {
 			// If not, we can't enable the plugin
 			false
 		}
-	}
-
-	val allPermissionsGranted: Boolean
-		get() = permissions.all { permission ->
-			// Check if permission is granted
-			ExportedPlugins.permissions[permission]?.granted?.value ?: false
-		}
-
-	fun isPluginEnabled(context: Context): Boolean {
-		val preferences = context.getSharedPreferences(SETTINGS_KEY, Context.MODE_PRIVATE)
-		Log.d("BasePlugin", "isPluginEnabled: ${preferences.getBoolean(id, false)}")
-		return preferences.getBoolean(id, false)
 	}
 }

@@ -29,15 +29,17 @@ import fr.angel.dynamicisland.island.IslandViewState
 import fr.angel.dynamicisland.model.*
 import fr.angel.dynamicisland.plugins.BasePlugin
 import fr.angel.dynamicisland.plugins.ExportedPlugins
+import fr.angel.dynamicisland.plugins.PluginHost
+import fr.angel.dynamicisland.plugins.PluginManager
 import fr.angel.dynamicisland.ui.island.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
-class IslandOverlayService : AccessibilityService() {
+class IslandOverlayService : AccessibilityService(), PluginHost {
 
 	private val params = WindowManager.LayoutParams(
-		WRAP_CONTENT,
+		MATCH_PARENT,
 		WRAP_CONTENT,
 		TYPE_ACCESSIBILITY_OVERLAY,
 		FLAG_LAYOUT_IN_SCREEN or FLAG_LAYOUT_NO_LIMITS or FLAG_NOT_TOUCH_MODAL or FLAG_NOT_FOCUSABLE,
@@ -53,8 +55,7 @@ class IslandOverlayService : AccessibilityService() {
 		private set
 
 	// Plugins
-	private val plugins: ArrayList<BasePlugin> = ExportedPlugins.plugins
-	val bindedPlugins = mutableStateListOf<BasePlugin>()
+	lateinit var pluginManager: PluginManager
 
 	// Theme
 	var invertedTheme by mutableStateOf(false)
@@ -99,10 +100,11 @@ class IslandOverlayService : AccessibilityService() {
 			addAction(SETTINGS_THEME_INVERTED)
 			addAction(ACTION_SCREEN_ON)
 			addAction(ACTION_SCREEN_OFF)
-		})
+		}, RECEIVER_EXPORTED)
 
 		// Setup plugins (check if they are enabled)
-		ExportedPlugins.setupPlugins(context = this)
+		pluginManager = PluginManager(this, this)
+		pluginManager.initialize()
 
 		// Setup
 		init()
@@ -112,25 +114,8 @@ class IslandOverlayService : AccessibilityService() {
 	}
 
 	fun init() {
-		// Remove plugins
-		plugins.forEach {
-			it.onDestroy()
-		}
-
-		// Remove binded plugins
-		bindedPlugins.forEach {
-			bindedPlugins.remove(it)
-		}
-
-		// Reset island state
-		islandState = IslandViewState.Closed
-
 		// Initialize the plugins
-		plugins.forEach {
-			if (!it.active) return@forEach
-			it.onCreate(this)
-			Log.d("OverlayService", "Plugin ${it.name} initialized")
-		}
+		pluginManager.initialize()
 
 		// Setup inverted theme
 		val settingsPreferences = getSharedPreferences(SETTINGS_KEY, Context.MODE_PRIVATE)
@@ -145,16 +130,15 @@ class IslandOverlayService : AccessibilityService() {
 		val composeView = ComposeView(this)
 		// Add effects when notification received, swiped, etc.
 		val composeEffectView = ComposeView(this)
-
 		composeView.setContent {
 			// Listen for plugin changes
-			LaunchedEffect(bindedPlugins.firstOrNull()) {
-				islandState = if (bindedPlugins.firstOrNull() != null) {
+			LaunchedEffect(pluginManager.activePlugins.firstOrNull()) {
+				islandState = if (pluginManager.activePlugins.firstOrNull() != null) {
 					IslandViewState.Opened
 				} else {
 					IslandViewState.Closed
 				}
-				Log.d("OverlayService", "Plugins changed: $bindedPlugins")
+				Log.d("OverlayService", "Plugins changed: ${pluginManager.activePlugins}")
 			}
 
 			IslandApp(
@@ -205,36 +189,33 @@ class IslandOverlayService : AccessibilityService() {
 		windowManager.addView(composeView, params)
 	}
 
-	fun addPlugin(plugin: BasePlugin) {
-		// Check for existing plugin with same id
-		if (bindedPlugins.any { it.id == plugin.id }) {
-			Log.d("OverlayService", "Plugin with id ${plugin.id} already binded")
-			return
-		}
-		if (bindedPlugins.isNotEmpty() && plugins.indexOf(plugin) < plugins.indexOf(bindedPlugins.first())) {
-			bindedPlugins.add(0, plugin)
-			Log.d("OverlayService", "Plugin with id ${plugin.id} added at the beginning")
-		} else {
-			bindedPlugins.add(plugin)
-			Log.d("OverlayService", "Plugin with id ${plugin.id} added at the end")
-		}
-	}
-	fun removePlugin(plugin: BasePlugin) {
-		Log.d("OverlayService", "Plugin with id ${plugin.id} removed")
-		bindedPlugins.removeIf { it.id == plugin.id }
+	override fun onDestroy() {
+		super.onDestroy()
+		pluginManager.onDestroy()
 	}
 
 	fun expand() { islandState = IslandViewState.Expanded(configuration = resources.configuration) }
 	fun shrink() { islandState = IslandViewState.Opened }
 
+	override fun requestDisplay(plugin: BasePlugin) {
+		pluginManager.requestDisplay(plugin)
+	}
+
+	override fun requestDismiss(plugin: BasePlugin) {
+		pluginManager.requestDismiss(plugin)
+	}
+
+	override fun requestExpand() {
+		expand()
+	}
+
+	override fun requestShrink() {
+		shrink()
+	}
+
 	override fun onUnbind(intent: Intent?): Boolean {
 		instance = null
 		return super.onUnbind(intent)
-	}
-
-	override fun onDestroy() {
-		super.onDestroy()
-		plugins.forEach { it.onDestroy() }
 	}
 
 	override fun onConfigurationChanged(newConfig: Configuration) {

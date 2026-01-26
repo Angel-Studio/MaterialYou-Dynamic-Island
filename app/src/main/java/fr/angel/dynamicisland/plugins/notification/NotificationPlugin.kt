@@ -12,6 +12,9 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,7 +68,6 @@ class NotificationPlugin(
 	override var pluginSettings: MutableMap<String, PluginSettingsItem> = mutableMapOf(),
 ) : BasePlugin() {
 
-	private lateinit var context: IslandOverlayService
 	private val notificationService = NotificationService.getInstance()
 
 	private var notificationMeta : MutableState<NotificationMeta?> = mutableStateOf(null)
@@ -104,21 +107,21 @@ class NotificationPlugin(
 
 				// Add plugin
 				Log.d("NotificationPlugin", "BroadcastReceiver: Add plugin")
-				this@NotificationPlugin.context.addPlugin(this@NotificationPlugin)
+				host?.requestDisplay(this@NotificationPlugin)
 			}
 			if (intent.action == NOTIFICATION_REMOVED) {
 				// val id = extras.getInt("id")
 				// removeNotificationAndUpdateState(id, true) // Notification already removed
 				Log.d("NotificationPlugin", "id: $id")
 				if (notificationService?.notifications?.isEmpty() == true) {
-					this@NotificationPlugin.context.removePlugin(this@NotificationPlugin)
+					host?.requestDismiss(this@NotificationPlugin)
 				}
 			}
 		}
 	}
 
 	private fun removeNotificationAndUpdateState(id: Int) {
-
+		val context = host as? Context ?: return
 		// Remove notification from list
 		notificationService?.notifications?.removeAll { it.id == id }
 
@@ -143,7 +146,7 @@ class NotificationPlugin(
 		if (notificationService?.notifications?.isEmpty() == true) {
 			// Remove plugin
 			Log.d("NotificationPlugin", "BroadcastReceiver: Remove plugin")
-			this@NotificationPlugin.context.removePlugin(this@NotificationPlugin)
+			host?.requestDismiss(this@NotificationPlugin)
 		}/* else {
 			// Setup timeout
 			handler.removeCallbacksAndMessages(null)
@@ -153,18 +156,22 @@ class NotificationPlugin(
 
 	override fun canExpand(): Boolean { return true }
 
-	override fun onCreate(context: IslandOverlayService?) {
-		this.context = context ?: return
+	override fun onPluginCreate() {
+		val context = host as? Context ?: return
 		val filter = IntentFilter()
 		filter.addAction(NOTIFICATION_POSTED)
 		filter.addAction(NOTIFICATION_REMOVED)
-		context.registerReceiver(mBroadcastReceiver, filter)
+		context.registerReceiver(mBroadcastReceiver, filter, Context.RECEIVER_EXPORTED)
 	}
 
-	@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
+	@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun Composable() {
+	override fun Composable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		val meta = notificationMeta.value ?: return
+		val context = LocalContext.current
 
 		// Cancel notification timeout
 		handler.removeCallbacksAndMessages(null)
@@ -226,7 +233,7 @@ class NotificationPlugin(
 			Column(
 				modifier = Modifier
 					.fillMaxSize()
-					.clip(RoundedCornerShape(context.islandState.cornerPercentage))
+					.clip(RoundedCornerShape(24.dp)) // Fixed value for now
 					.background(MaterialTheme.colorScheme.background)
 					.padding(16.dp),
 			) {
@@ -235,11 +242,18 @@ class NotificationPlugin(
 					verticalAlignment = Alignment.CenterVertically
 				) {
 					// Icon
-					Icon(painter = rememberDrawablePainter(drawable = meta.iconDrawable),
-						contentDescription = null,
-						tint = MaterialTheme.colorScheme.primary,
-						modifier = Modifier.size(48.dp)
-					)
+					with(sharedTransitionScope) {
+						Icon(painter = rememberDrawablePainter(drawable = meta.iconDrawable),
+							contentDescription = null,
+							tint = MaterialTheme.colorScheme.primary,
+							modifier = Modifier
+								.size(48.dp)
+								.sharedElement(
+									rememberSharedContentState(key = "notification_icon_${meta.id}"),
+									animatedVisibilityScope = animatedContentScope
+								)
+						)
+					}
 					Spacer(modifier = Modifier.width(16.dp))
 					// Title + app name
 					Column(modifier = Modifier.weight(1f)) {
@@ -260,7 +274,7 @@ class NotificationPlugin(
 					// Close button
 					IconButton(modifier = Modifier.align(Alignment.Top),
 						onClick = {
-							context.shrink()
+							host?.requestShrink()
 							restartTimeout()
 						}
 					) { Icon(imageVector = Icons.Default.ExpandLess, contentDescription = null) }
@@ -348,11 +362,10 @@ class NotificationPlugin(
 													0
 												)
 											}
-										}
-										.displayCutoutPadding(),
+										},
 									shape = CircleShape,
 									singleLine = true,
-									colors = TextFieldDefaults.textFieldColors(
+									colors = TextFieldDefaults.colors(
 										focusedIndicatorColor = Color.Transparent,
 										unfocusedIndicatorColor = Color.Transparent,
 										disabledIndicatorColor = Color.Transparent,
@@ -387,13 +400,14 @@ class NotificationPlugin(
 
 	override fun onClick() {
 		val meta = notificationMeta.value ?: return
+		val context = host as? Context ?: return
 		val intent = Intent(ACTION_OPEN_CLOSE)
 		intent.putExtra("id", meta.id)
 		context.sendBroadcast(intent)
 	}
 
 	override fun onDestroy() {
-		if (!::context.isInitialized) return
+		val context = host as? Context ?: return
 		try {
 			context.unregisterReceiver(mBroadcastReceiver)
 		} catch (_: Exception) {} // Ignore exception if receiver is not registered
@@ -404,26 +418,40 @@ class NotificationPlugin(
 
 	}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun LeftOpenedComposable() {
+	override fun LeftOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		val meta = notificationMeta.value ?: return
 
-		Box(
-			modifier = Modifier
-				.clip(CircleShape)
-				.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-		) {
-			Icon(
-				painter = rememberDrawablePainter(drawable = meta.iconDrawable),
-				tint = MaterialTheme.colorScheme.primary,
-				contentDescription = null,
-				modifier = Modifier.padding(2.dp)
-			)
+		with(sharedTransitionScope) {
+			Box(
+				modifier = Modifier
+					.clip(CircleShape)
+					.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+					.sharedElement(
+						rememberSharedContentState(key = "notification_icon_${meta.id}"),
+						animatedVisibilityScope = animatedContentScope
+					)
+			) {
+				Icon(
+					painter = rememberDrawablePainter(drawable = meta.iconDrawable),
+					tint = MaterialTheme.colorScheme.primary,
+					contentDescription = null,
+					modifier = Modifier.padding(2.dp)
+				)
+			}
 		}
 	}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun RightOpenedComposable() {
+	override fun RightOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		when (notificationMeta.value?.statusBarNotification?.notification?.category) {
 			"msg" -> {
 				Box(
@@ -444,8 +472,8 @@ class NotificationPlugin(
 
 	override fun onLeftSwipe() {
 		Log.d("Notification", "Left swipe")
+		val context = host as? Context ?: return
 		context.sendBroadcast(Intent(ACTION_CLOSE))
-		context.removePlugin(this)
 	}
 
 	override fun onRightSwipe() {}

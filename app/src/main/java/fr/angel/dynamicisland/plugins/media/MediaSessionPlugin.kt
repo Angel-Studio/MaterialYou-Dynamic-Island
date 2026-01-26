@@ -8,7 +8,10 @@ import android.media.session.MediaSessionManager
 import android.media.session.MediaSessionManager.OnActiveSessionsChangedListener
 import android.provider.Settings
 import android.util.Log
+import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.github.compose.waveloading.DrawType
 import com.github.compose.waveloading.WaveLoading
 import com.skydoves.landscapist.rememberDrawablePainter
@@ -44,7 +48,6 @@ class MediaSessionPlugin(
 	override var pluginSettings: MutableMap<String, PluginSettingsItem> = mutableMapOf(),
 ) : BasePlugin() {
 
-	lateinit var context: IslandOverlayService
 	private lateinit var mediaSessionManager: MediaSessionManager
 
 	private var callbackMap = mutableStateMapOf<String, MediaCallback>()
@@ -71,13 +74,17 @@ class MediaSessionPlugin(
 
 	fun removeMedia(mediaController: MediaController) {
 		callbackMap.remove(mediaController.packageName)
-		if (callbackMap.isEmpty()) { context.removePlugin(this) }
+		if (callbackMap.isEmpty()) { host?.requestDismiss(this) }
+	}
+
+	fun addMedia() {
+		host?.requestDisplay(this)
 	}
 
 	override fun canExpand(): Boolean { return true }
 
-	override fun onCreate(context: IslandOverlayService?) {
-		this.context = context ?: return
+	override fun onPluginCreate() {
+		val context = host as? Context ?: return
 
 		// Get the media session manager
 		mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -94,9 +101,14 @@ class MediaSessionPlugin(
 		}
 	}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun Composable() {
+	override fun Composable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		val mediaCallback = callbackMap.values.firstOrNull() ?: return
+		val context = LocalContext.current
 
 		val controller = mediaCallback.mediaController
 		val controls = controller.transportControls
@@ -122,36 +134,50 @@ class MediaSessionPlugin(
 				modifier = Modifier.fillMaxWidth(),
 				verticalAlignment = Alignment.CenterVertically
 			) {
-				Crossfade(targetState = mediaCallback.mediaStruct.cover.value) { cover ->
-					if (cover != null) {
+				with(sharedTransitionScope) {
+					if (mediaCallback.mediaStruct.cover.value != null) {
 						Image(
-							bitmap = cover.asImageBitmap(),
+							bitmap = mediaCallback.mediaStruct.cover.value!!.asImageBitmap(),
 							contentDescription = null,
 							modifier = Modifier
 								.clip(RoundedCornerShape(8.dp))
 								.size(64.dp)
+								.sharedElement(
+									rememberSharedContentState(key = "media_cover_${mediaCallback.mediaController.packageName}"),
+									animatedVisibilityScope = animatedContentScope
+								)
 						)
 					} else {
-						Icon(
-							imageVector = Icons.Default.MusicNote,
-							contentDescription = null,
+						Box(
 							modifier = Modifier
-								.size(128.dp)
+								.size(64.dp)
 								.clip(RoundedCornerShape(8.dp))
-								.border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
-						)
+								.background(MaterialTheme.colorScheme.secondaryContainer)
+								.sharedElement(
+									rememberSharedContentState(key = "media_cover_${mediaCallback.mediaController.packageName}"),
+									animatedVisibilityScope = animatedContentScope
+								),
+							contentAlignment = Alignment.Center
+						) {
+							Icon(
+								imageVector = Icons.Default.MusicNote,
+								contentDescription = null,
+								modifier = Modifier.size(32.dp),
+								tint = MaterialTheme.colorScheme.onSecondaryContainer
+							)
+						}
 					}
 				}
 
 				Spacer(modifier = Modifier.width(16.dp))
 				Column(modifier = Modifier.weight(1f)) {
-					Crossfade(targetState = mediaCallback.mediaStruct.title.value) { title ->
+					Crossfade(targetState = mediaCallback.mediaStruct.title.value, label = "title") { title ->
 						Text(
 							text = title,
 							style = MaterialTheme.typography.titleMedium
 						)
 					}
-					Crossfade(targetState = mediaCallback.mediaStruct.artist.value) { artist ->
+					Crossfade(targetState = mediaCallback.mediaStruct.artist.value, label = "artist") { artist ->
 						Text(
 							text = artist,
 							style = MaterialTheme.typography.labelMedium
@@ -159,7 +185,7 @@ class MediaSessionPlugin(
 					}
 				}
 				IconButton(
-					onClick = { context.shrink() },
+					onClick = { host?.requestShrink() },
 					modifier = Modifier.align(Alignment.Top)
 				) { Icon(imageVector = Icons.Default.ExpandLess, contentDescription = null) }
 			}
@@ -167,7 +193,7 @@ class MediaSessionPlugin(
 
 			// Slider controlling the position in the song
 			Slider(
-				value = if (isDragging) draggedPosition else animateFloatAsState(targetValue = songPosition).value,
+				value = if (isDragging) draggedPosition else animateFloatAsState(targetValue = songPosition, label = "songPos").value,
 				onValueChange = { value ->
 					draggedPosition = value
 					isDragging = true
@@ -227,28 +253,55 @@ class MediaSessionPlugin(
 	override fun onLeftSwipe() {}
 	override fun onRightSwipe() {}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun LeftOpenedComposable() {
+	override fun LeftOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
 		val mediaCallback = callbackMap.values.firstOrNull() ?: return
+		val context = LocalContext.current
 
-		if (mediaCallback.mediaStruct.cover.value != null) {
-			Crossfade(targetState = mediaCallback.mediaStruct.cover.value!!) {
+		with(sharedTransitionScope) {
+			if (mediaCallback.mediaStruct.cover.value != null) {
 				Image(
-					bitmap = it.asImageBitmap(),
+					bitmap = mediaCallback.mediaStruct.cover.value!!.asImageBitmap(),
 					contentDescription = "Pause",
-					modifier = Modifier.clip(CircleShape)
+					modifier = Modifier
+						.clip(CircleShape)
+						.sharedElement(
+							rememberSharedContentState(key = "media_cover_${mediaCallback.mediaController.packageName}"),
+							animatedVisibilityScope = animatedContentScope
+						)
 				)
+			} else {
+				Box(
+					modifier = Modifier
+						.clip(CircleShape)
+						.background(MaterialTheme.colorScheme.secondaryContainer)
+						.sharedElement(
+							rememberSharedContentState(key = "media_cover_${mediaCallback.mediaController.packageName}"),
+							animatedVisibilityScope = animatedContentScope
+						),
+					contentAlignment = Alignment.Center
+				) {
+					Icon(
+						imageVector = Icons.Default.MusicNote,
+						contentDescription = null,
+						tint = MaterialTheme.colorScheme.onSecondaryContainer
+					)
+				}
 			}
-		} else {
-			Icon(
-				imageVector = Icons.Default.MusicNote,
-				contentDescription = null,
-			)
 		}
 	}
 
+	@OptIn(ExperimentalSharedTransitionApi::class)
 	@Composable
-	override fun RightOpenedComposable() {
+	override fun RightOpenedComposable(
+		sharedTransitionScope: SharedTransitionScope,
+		animatedContentScope: AnimatedContentScope
+	) {
+        val context = LocalContext.current
 		val mediaCallback = callbackMap.values.firstOrNull()
 		if (mediaCallback == null) {
 			Log.d("MediaSessionPlugin", "RightOpenedComposable: No media callback")
