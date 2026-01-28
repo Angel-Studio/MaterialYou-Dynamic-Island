@@ -237,159 +237,181 @@ class NotificationPlugin(
 					.background(MaterialTheme.colorScheme.background)
 					.padding(16.dp),
 			) {
-				// Notification title + app name + close button + icon
-				Row(modifier = Modifier.fillMaxWidth(),
-					verticalAlignment = Alignment.CenterVertically
-				) {
-					// Icon
-					with(sharedTransitionScope) {
-						Icon(painter = rememberDrawablePainter(drawable = meta.iconDrawable),
+				// Icon
+				val appName = meta.getAppName(context)
+				with(sharedTransitionScope) {
+					Box(
+						modifier = Modifier
+							.size(48.dp)
+							.sharedElement(
+								rememberSharedContentState(key = "notification_icon_${meta.id}"),
+								animatedVisibilityScope = animatedContentScope
+							),
+						contentAlignment = Alignment.Center
+					) {
+						Icon(
+							painter = rememberDrawablePainter(drawable = meta.iconDrawable),
 							contentDescription = null,
 							tint = MaterialTheme.colorScheme.primary,
-							modifier = Modifier
-								.size(48.dp)
-								.sharedElement(
-									rememberSharedContentState(key = "notification_icon_${meta.id}"),
-									animatedVisibilityScope = animatedContentScope
-								)
+							modifier = Modifier.fillMaxSize()
 						)
 					}
-					Spacer(modifier = Modifier.width(16.dp))
-					// Title + app name
-					Column(modifier = Modifier.weight(1f)) {
+				}
+				Spacer(modifier = Modifier.width(16.dp))
+				// Title + app name
+				Column(modifier = Modifier.weight(1f)) {
+					Text(
+						text = appName,
+						style = MaterialTheme.typography.titleMedium,
+						overflow = TextOverflow.Ellipsis,
+						maxLines = 1,
+					)
+					if (meta.title != null) {
 						Text(
-							text = meta.getAppName(context),
-							style = MaterialTheme.typography.titleMedium,
+							text = meta.title!!,
+							style = MaterialTheme.typography.titleSmall,
 							overflow = TextOverflow.Ellipsis,
-							maxLines = 1,
+							maxLines = 1
 						)
-						if (meta.title != null) {
-							Text(text = meta.title!!,
-								style = MaterialTheme.typography.titleSmall,
-								overflow = TextOverflow.Ellipsis,
-								maxLines = 1
+					}
+				}
+				// Close button
+				IconButton(
+					onClick = {
+						host?.requestShrink()
+						restartTimeout()
+					}
+				) {
+					with(sharedTransitionScope) {
+						Box(
+							modifier = Modifier
+								.size(24.dp)
+								.sharedElement(
+									rememberSharedContentState(key = "notification_category_${meta.id}"),
+									animatedVisibilityScope = animatedContentScope
+								),
+							contentAlignment = Alignment.Center
+						) {
+							Icon(
+								imageVector = Icons.Default.ExpandLess,
+								contentDescription = null,
+								modifier = Modifier.fillMaxSize()
 							)
 						}
 					}
-					// Close button
-					IconButton(modifier = Modifier.align(Alignment.Top),
-						onClick = {
-							host?.requestShrink()
-							restartTimeout()
-						}
-					) { Icon(imageVector = Icons.Default.ExpandLess, contentDescription = null) }
 				}
-				Spacer(modifier = Modifier.height(4.dp))
-				// Notification body
-				Box(modifier = Modifier.weight(1f),
-					contentAlignment = Alignment.CenterStart
-				) {
-					Text(
-						text = meta.body,
-						style = MaterialTheme.typography.bodySmall,
-						textAlign = TextAlign.Justify,
-						overflow = TextOverflow.Ellipsis,
-					)
-				}
-				// Notification actions
-				Row(
-					modifier = Modifier.fillMaxWidth(),
-					horizontalArrangement = Arrangement.spacedBy(8.dp)
-				) {
-					var isReplying by remember { mutableStateOf(false) }
-					var replyText by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
+			}
+			Spacer(modifier = Modifier.height(4.dp))
+			// Notification body
+			Box(
+				modifier = Modifier.weight(1f),
+				contentAlignment = Alignment.CenterStart
+			) {
+				Text(
+					text = meta.body,
+					style = MaterialTheme.typography.bodySmall,
+					textAlign = TextAlign.Justify,
+					overflow = TextOverflow.Ellipsis,
+				)
+			}
+			// Notification actions
+			Row(
+				modifier = Modifier.fillMaxWidth(),
+				horizontalArrangement = Arrangement.spacedBy(8.dp)
+			) {
+				var isReplying by remember { mutableStateOf(false) }
+				var replyText by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
 
-					meta.actions.forEach { action ->
-						val remoteInput = action.remoteInputs?.firstOrNull()
+				meta.actions.forEach { action ->
+					val remoteInput = action.remoteInputs?.firstOrNull()
 
-						if (!isReplying) {
-							// Show buttons
-							if (remoteInput == null) {
-								// Not a reply button
-								Button(
-									modifier = Modifier.weight(1f),
-									onClick = {
-										// Classic action
-										val intent = action.actionIntent
-										intent.send()
-										// Remove notification
-										context.sendBroadcast(Intent(ACTION_CLOSE).apply {
-											putExtra("id", meta.id)
-										})
-									},
-								) {
-									Text(
-										text = action.title.toString(),
-										style = MaterialTheme.typography.labelSmall,
-									)
-								}
-							} else {
-								// Reply button
-								Button(
-									modifier = Modifier.weight(1f),
-									onClick = {
-										// Reply action
-										isReplying = true
-									},
-								) {
-									Text(
-										text = action.title.toString(),
-										style = MaterialTheme.typography.labelSmall,
-									)
-								}
-							}
-						} else if (remoteInput != null) {
-							// Create reply text field
-							Row(
-								modifier = Modifier
-									.weight(1f),
-								verticalAlignment = Alignment.CenterVertically
-							) {
-
-
-								TextField(
-									value = replyText,
-									onValueChange = { replyText = it },
-									modifier = Modifier
-										.weight(1f)
-										.onFocusChanged {
-											Log.d("Focus", it.isFocused.toString())
-											val imm =
-												context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-											if (it.isFocused) {
-												imm.toggleSoftInput(
-													InputMethodManager.SHOW_FORCED,
-													0
-												)
-											}
-										},
-									shape = CircleShape,
-									singleLine = true,
-									colors = TextFieldDefaults.colors(
-										focusedIndicatorColor = Color.Transparent,
-										unfocusedIndicatorColor = Color.Transparent,
-										disabledIndicatorColor = Color.Transparent,
-										errorIndicatorColor = Color.Transparent,
-									),
-								)
-								IconButton(onClick = {
-									// Send reply action
-									val intent = Intent().addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-									val bundle = Bundle().apply {
-										putCharSequence(remoteInput.resultKey, replyText.text)
-									}
-									RemoteInput.addResultsToIntent(action.remoteInputs, intent, bundle)
-									action.actionIntent.send(context, 0, intent)
+					if (!isReplying) {
+						// Show buttons
+						if (remoteInput == null) {
+							// Not a reply button
+							Button(
+								modifier = Modifier.weight(1f),
+								onClick = {
+									// Classic action
+									val intent = action.actionIntent
+									intent.send()
 									// Remove notification
 									context.sendBroadcast(Intent(ACTION_CLOSE).apply {
 										putExtra("id", meta.id)
 									})
-								}) {
-									Icon(
-										imageVector = Icons.Default.Send,
-										contentDescription = null
-									)
+								},
+							) {
+								Text(
+									text = action.title.toString(),
+									style = MaterialTheme.typography.labelSmall,
+								)
+							}
+						} else {
+							// Reply button
+							Button(
+								modifier = Modifier.weight(1f),
+								onClick = {
+									// Reply action
+									isReplying = true
+								},
+							) {
+								Text(
+									text = action.title.toString(),
+									style = MaterialTheme.typography.labelSmall,
+								)
+							}
+						}
+					} else if (remoteInput != null) {
+						// Create reply text field
+						Row(
+							modifier = Modifier
+								.weight(1f),
+							verticalAlignment = Alignment.CenterVertically
+						) {
+
+
+							TextField(
+								value = replyText,
+								onValueChange = { replyText = it },
+								modifier = Modifier
+									.weight(1f)
+									.onFocusChanged {
+										Log.d("Focus", it.isFocused.toString())
+										val imm =
+											context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+										if (it.isFocused) {
+											imm.toggleSoftInput(
+												InputMethodManager.SHOW_FORCED,
+												0
+											)
+										}
+									},
+								shape = CircleShape,
+								singleLine = true,
+								colors = TextFieldDefaults.colors(
+									focusedIndicatorColor = Color.Transparent,
+									unfocusedIndicatorColor = Color.Transparent,
+									disabledIndicatorColor = Color.Transparent,
+									errorIndicatorColor = Color.Transparent,
+								),
+							)
+							IconButton(onClick = {
+								// Send reply action
+								val intent = Intent().addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+								val bundle = Bundle().apply {
+									putCharSequence(remoteInput.resultKey, replyText.text)
 								}
+								RemoteInput.addResultsToIntent(action.remoteInputs, intent, bundle)
+								action.actionIntent.send(context, 0, intent)
+								// Remove notification
+								context.sendBroadcast(Intent(ACTION_CLOSE).apply {
+									putExtra("id", meta.id)
+								})
+							}) {
+								Icon(
+									imageVector = Icons.Default.Send,
+									contentDescription = null
+								)
 							}
 						}
 					}
@@ -429,18 +451,20 @@ class NotificationPlugin(
 		with(sharedTransitionScope) {
 			Box(
 				modifier = Modifier
+					.size(34.dp)
 					.clip(CircleShape)
 					.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
 					.sharedElement(
 						rememberSharedContentState(key = "notification_icon_${meta.id}"),
 						animatedVisibilityScope = animatedContentScope
-					)
+					),
+				contentAlignment = Alignment.Center
 			) {
 				Icon(
 					painter = rememberDrawablePainter(drawable = meta.iconDrawable),
 					tint = MaterialTheme.colorScheme.primary,
 					contentDescription = null,
-					modifier = Modifier.padding(2.dp)
+					modifier = Modifier.padding(2.dp).fillMaxSize()
 				)
 			}
 		}
@@ -452,19 +476,28 @@ class NotificationPlugin(
 		sharedTransitionScope: SharedTransitionScope,
 		animatedContentScope: AnimatedContentScope
 	) {
-		when (notificationMeta.value?.statusBarNotification?.notification?.category) {
+		val meta = notificationMeta.value ?: return
+		when (meta.statusBarNotification?.notification?.category) {
 			"msg" -> {
-				Box(
-					modifier = Modifier
-						.clip(CircleShape)
-						.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-				) {
-					Icon(
-						imageVector = Icons.Default.Chat,
-						tint = MaterialTheme.colorScheme.primary,
-						contentDescription = null,
-						modifier = Modifier.padding(4.dp)
-					)
+				with(sharedTransitionScope) {
+					Box(
+						modifier = Modifier
+							.size(34.dp)
+							.clip(CircleShape)
+							.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+							.sharedElement(
+								rememberSharedContentState(key = "notification_category_${meta.id}"),
+								animatedVisibilityScope = animatedContentScope
+							),
+						contentAlignment = Alignment.Center
+					) {
+						Icon(
+							imageVector = Icons.Default.Chat,
+							tint = MaterialTheme.colorScheme.primary,
+							contentDescription = null,
+							modifier = Modifier.padding(4.dp).fillMaxSize()
+						)
+					}
 				}
 			}
 		}
